@@ -25,7 +25,7 @@ A comprehensive Android application for real-time weather monitoring, automatic 
 
 ## 📸 Screenshots
 
-*![WhatsApp Image 2025-11-25 at 23 11 18_f241cee6](https://github.com/user-attachments/assets/0d8a1e3a-63c1-43c2-9568-ef6a5560be99)
+*![WhatsApp Image 2025-11-25 at 23 11 18_f241cee6]
 
 
 ## 🔧 Setup & Installation

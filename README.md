@@ -25,10 +25,89 @@ A comprehensive Android application for real-time weather monitoring, automatic 
 
 ## 📸 Screenshots
 
-*![WhatsApp Image 2025-11-25 at 23 11 18_f241cee6](https://github.com/user-attachments/assets/0d8a1e3a-63c1-43c2-9568-ef6a5560be99)
+*![WhatsApp Image 2025-11-25 at 23 11 18_f241cee6]
 
 
 ## 🔧 Setup & Installation
 
 1.  **Clone the Repository:**
+2.  Open in Android Studio
+
+Launch Android Studio and choose Open → select the project folder.
+
+Let Gradle sync and download dependencies.
+
+Add API keys and Firebase
+
+OpenWeatherMap API: Create an account at OpenWeatherMap, get an API key, and add it to the project:
+
+Recommended: create a local.properties entry or add it to res/values/secrets.xml (don't commit keys to git).
+
+Example (in code where API key constant is used): const val OPEN_WEATHER_MAP_API_KEY = "YOUR_KEY_HERE"
+
+Firebase:
+
+Create a Firebase project and Realtime Database.
+
+Download google-services.json and place it in app/.
+
+Add Firebase Realtime Database rules appropriate for your use-case (read/write auth as needed).
+
+Build & Run
+
+Select an emulator or a connected Android device and run the app.
+
+Grant any runtime permissions required (e.g., network / location if implemented).
+
+Usage
+
+Search for a city to view current weather and forecasts.
+
+The app stores your search history locally (SQLite).
+
+Severe weather conditions or thresholds (as implemented) will push alerts to Firebase so remote monitors can react.
+
+Project Structure (high level)
+
+app/ — Android application module (Java source, resources).
+
+gradle/, build.gradle.kts — build configuration.
+
+.idea/, .gitignore, Gradle wrappers — project configs. 
+GitHub
+
+Contributing
+
+Fork the repository.
+
+Create a feature branch: git checkout -b feature/your-feature
+
+Commit your changes: git commit -m "Add some feature"
+
+Push to your fork and open a Pull Request.
+
+Please keep API keys out of commits. Use environment variables or local config files.
+
+To-Do / Improvements
+
+Add unit and integration tests for data fetch and DB operations.
+
+Implement robust error handling and retry/backoff for network calls.
+
+Add user-configurable alert thresholds and notification channels.
+
+Add CI (GitHub Actions) to run lint/tests on PRs.
+
+License
+
+(No license file found in the repo. Add a LICENSE file — e.g., MIT — if you want to make this open source.) 
+GitHub
+
+Acknowledgements
+
+OpenWeatherMap for weather APIs.
+
+Firebase for realtime backend.
+
+Retrofit, GSON, Glide and AndroidX libraries.
     

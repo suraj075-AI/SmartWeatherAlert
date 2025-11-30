@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -18,6 +19,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.smartweatheralertearlywarningsystem.data.WeatherApi;
 import com.example.smartweatheralertearlywarningsystem.data.WeatherResponse;
+import com.example.smartweatheralertearlywarningsystem.db.FirebaseManager;
 import com.example.smartweatheralertearlywarningsystem.db.WeatherDao;
 
 import java.io.IOException;
@@ -41,33 +43,49 @@ public class MainActivity extends BaseActivity implements WeatherManager {
 
     private EditText etCity;
     private Button btnFetch;
+    private ImageView ivEdit, ivAdd, ivBack;
     private View emptyStateLayout;
     private RecyclerView rvCityList;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private TextView tvNoCities;
+    private View ivIllustration;
     private CityAdapter adapter;
     private List<WeatherResponse> cityWeatherList = new ArrayList<>();
 
-    private WeatherDao weatherDao;
-    // Multithreading
+    private final WeatherDao weatherDao; 
+    private FirebaseManager firebaseManager;
     private ExecutorService dbExecutor;
     private ScheduledExecutorService scheduler;
 
     private String currentCity = "";
+    private boolean isEditMode = false;
 
-    // IMPORTANT: Ensure this API Key is valid and active.
     private static final String API_KEY = "f3b8ee0f6e075312892c53259579829a"; 
     private static final String BASE_URL = "https://api.openweathermap.org/";
+
+    public MainActivity() {
+        this.weatherDao = null; 
+    }
+
+    private final Object dbLock = new Object();
+    private WeatherDao daoInstance;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        weatherDao = new WeatherDao(this);
+        daoInstance = new WeatherDao(this);
         try {
-            weatherDao.open();
+            daoInstance.open();
         } catch (Exception e) {
             handleError(e);
+        }
+        
+        try {
+            firebaseManager = new FirebaseManager();
+        } catch (Exception e) {
+            Log.e(TAG, "Firebase initialization failed: " + e.getMessage());
         }
 
         dbExecutor = Executors.newSingleThreadExecutor();
@@ -78,7 +96,6 @@ public class MainActivity extends BaseActivity implements WeatherManager {
     @Override
     protected void onResume() {
         super.onResume();
-        // Start refreshing data every minute
         startAutoRefresh();
     }
 
@@ -92,7 +109,15 @@ public class MainActivity extends BaseActivity implements WeatherManager {
     protected void setupViews() {
         etCity = findViewById(R.id.etCity);
         btnFetch = findViewById(R.id.btnFetch);
-        emptyStateLayout = findViewById(R.id.emptyStateLayout);
+        
+        // Toolbar Icons
+        ivEdit = findViewById(R.id.ivEdit);
+        ivAdd = findViewById(R.id.ivAdd);
+        ivBack = findViewById(R.id.ivBack);
+
+        ivIllustration = findViewById(R.id.ivIllustration);
+        tvNoCities = findViewById(R.id.tvNoCities);
+        
         rvCityList = findViewById(R.id.rvCityList);
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
 
@@ -100,6 +125,7 @@ public class MainActivity extends BaseActivity implements WeatherManager {
         adapter = new CityAdapter(cityWeatherList);
         rvCityList.setAdapter(adapter);
 
+        // Click Listeners for Main Features
         btnFetch.setOnClickListener(v -> {
             String city = etCity.getText().toString().trim();
             if (!city.isEmpty()) {
@@ -110,11 +136,34 @@ public class MainActivity extends BaseActivity implements WeatherManager {
             }
         });
 
+        // Click Listeners for Toolbar Icons
+        ivBack.setOnClickListener(v -> {
+            onBackPressed();
+        });
+
+        ivAdd.setOnClickListener(v -> {
+            etCity.requestFocus();
+            // Show keyboard implicitly
+            Toast.makeText(MainActivity.this, "Enter city name to add", Toast.LENGTH_SHORT).show();
+        });
+
+        ivEdit.setOnClickListener(v -> {
+            isEditMode = !isEditMode;
+            adapter.setEditMode(isEditMode);
+            if (isEditMode) {
+                Toast.makeText(MainActivity.this, "Edit Mode ON: Tap delete icon to remove city", Toast.LENGTH_SHORT).show();
+                ivEdit.setAlpha(0.5f); // Visual feedback
+            } else {
+                Toast.makeText(MainActivity.this, "Edit Mode OFF", Toast.LENGTH_SHORT).show();
+                ivEdit.setAlpha(1.0f);
+            }
+        });
+
+
         swipeRefreshLayout.setOnRefreshListener(() -> {
             if (!currentCity.isEmpty()) {
                 fetchWeatherData(currentCity, true);
             } else if (!cityWeatherList.isEmpty()) {
-                // If we have a list but no currentCity set (e.g. after restart), use the top city
                 currentCity = cityWeatherList.get(0).name;
                 fetchWeatherData(currentCity, true);
             } else {
@@ -127,7 +176,7 @@ public class MainActivity extends BaseActivity implements WeatherManager {
     private void startAutoRefresh() {
         if (scheduler == null || scheduler.isShutdown()) {
             scheduler = Executors.newSingleThreadScheduledExecutor();
-            scheduler.scheduleAtFixedRate(() -> {
+            scheduler.scheduleWithFixedDelay(() -> {
                 if (!currentCity.isEmpty()) {
                     runOnUiThread(() -> fetchWeatherData(currentCity, true));
                 }
@@ -188,7 +237,7 @@ public class MainActivity extends BaseActivity implements WeatherManager {
                                 onFetchError("Error " + response.code() + ": " + errorBody);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            Log.e(TAG, "Error parsing error response", e);
                             onFetchError("Error parsing error response");
                         }
                     }
@@ -209,7 +258,9 @@ public class MainActivity extends BaseActivity implements WeatherManager {
     }
 
     private void addCityCard(WeatherResponse weather) {
-        emptyStateLayout.setVisibility(View.GONE);
+        if (ivIllustration != null) ivIllustration.setVisibility(View.GONE);
+        if (tvNoCities != null) tvNoCities.setVisibility(View.GONE);
+        
         rvCityList.setVisibility(View.VISIBLE);
         
         cityWeatherList.add(0, weather); 
@@ -236,13 +287,19 @@ public class MainActivity extends BaseActivity implements WeatherManager {
     public void onWeatherFetched(String city, double temp, String description, String icon) {
         dbExecutor.execute(() -> {
             try {
-                synchronized (weatherDao) { 
-                    weatherDao.insertWeather(city, temp);
+                synchronized (dbLock) { 
+                    if (daoInstance != null) {
+                        daoInstance.insertWeather(city, temp);
+                    }
                 }
             } catch (Exception e) {
                 handleError(e);
             }
         });
+        
+        if (firebaseManager != null) {
+            firebaseManager.saveWeatherData(city, temp, description);
+        }
     }
 
     @Override
@@ -253,16 +310,24 @@ public class MainActivity extends BaseActivity implements WeatherManager {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        weatherDao.close();
+        if (daoInstance != null) {
+            daoInstance.close();
+        }
         dbExecutor.shutdown();
         stopAutoRefresh();
     }
 
     class CityAdapter extends RecyclerView.Adapter<CityAdapter.ViewHolder> {
         private List<WeatherResponse> cities;
+        private boolean editMode = false;
 
         public CityAdapter(List<WeatherResponse> cities) {
             this.cities = cities;
+        }
+
+        public void setEditMode(boolean editMode) {
+            this.editMode = editMode;
+            notifyDataSetChanged();
         }
 
         @NonNull
@@ -283,10 +348,27 @@ public class MainActivity extends BaseActivity implements WeatherManager {
             int high = (int) weather.main.tempMax;
             holder.tvDesc.setText(desc + " " + low + " ~ " + high + "°C");
 
+            // Toggle Delete Icon
+            holder.ivDelete.setVisibility(editMode ? View.VISIBLE : View.GONE);
+            
+            holder.ivDelete.setOnClickListener(v -> {
+                cities.remove(position);
+                notifyItemRemoved(position);
+                notifyItemRangeChanged(position, cities.size());
+                
+                if (cities.isEmpty()) {
+                    rvCityList.setVisibility(View.GONE);
+                    if (ivIllustration != null) ivIllustration.setVisibility(View.VISIBLE);
+                    if (tvNoCities != null) tvNoCities.setVisibility(View.VISIBLE);
+                }
+            });
+
             holder.itemView.setOnClickListener(v -> {
-                Intent intent = new Intent(MainActivity.this, WeatherDetailActivity.class);
-                intent.putExtra(WeatherDetailActivity.EXTRA_CITY, weather.name);
-                startActivity(intent);
+                if (!editMode) {
+                    Intent intent = new Intent(MainActivity.this, WeatherDetailActivity.class);
+                    intent.putExtra(WeatherDetailActivity.EXTRA_CITY, weather.name);
+                    startActivity(intent);
+                }
             });
         }
 
@@ -297,11 +379,13 @@ public class MainActivity extends BaseActivity implements WeatherManager {
 
         class ViewHolder extends RecyclerView.ViewHolder {
             TextView tvCity, tvTemp, tvDesc;
+            ImageView ivDelete;
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvCity = itemView.findViewById(R.id.tvCityName);
                 tvTemp = itemView.findViewById(R.id.tvTemp);
                 tvDesc = itemView.findViewById(R.id.tvDescription);
+                ivDelete = itemView.findViewById(R.id.ivDelete);
             }
         }
     }

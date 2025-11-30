@@ -37,8 +37,8 @@ public class WeatherDetailActivity extends BaseActivity {
     public static final String EXTRA_CITY = "extra_city";
     private static final String TAG = "WeatherDetailActivity";
 
-    private TextView tvCityName, tvDate, tvCurrentTemp, tvTempRange, tvHumidity, tvClouds, tvWind;
-    private ImageView ivCurrentIcon;
+    private TextView tvCityName, tvDate, tvCurrentTemp, tvTempRange, tvHumidity, tvWind;
+    // private ImageView ivCurrentIcon; // Removed as per new UI design
     private RecyclerView rvHourly, rvDaily;
 
     // IMPORTANT: Ensure this API Key is valid and active.
@@ -66,15 +66,20 @@ public class WeatherDetailActivity extends BaseActivity {
         tvCurrentTemp = findViewById(R.id.tvCurrentTemp);
         tvTempRange = findViewById(R.id.tvTempRange);
         tvHumidity = findViewById(R.id.tvHumidity);
-        tvClouds = findViewById(R.id.tvClouds);
+        // tvClouds = findViewById(R.id.tvClouds); // Removed
         tvWind = findViewById(R.id.tvWind);
-        ivCurrentIcon = findViewById(R.id.ivCurrentIcon);
+        // ivCurrentIcon = findViewById(R.id.ivCurrentIcon); // Removed
         rvHourly = findViewById(R.id.rvHourly);
         rvDaily = findViewById(R.id.rvDaily);
 
         // Horizontal scroll for lists
         rvHourly.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        rvDaily.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        // Daily list is now Vertical in the new design, but LinearLayoutManager defaults to vertical if not specified?
+        // Wait, previous code was Horizontal. The new XML shows it inside a Card/Layout but the screenshot 2 shows Vertical list.
+        // However, my XML for rvDaily has app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" which defaults to Vertical.
+        // But in Java I was setting it to Horizontal. I should change it to Vertical or let XML handle it.
+        // Let's enforce Vertical for Daily to match Screenshot 2.
+        rvDaily.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
     }
 
     private void fetchWeatherData(String city) {
@@ -154,11 +159,11 @@ public class WeatherDetailActivity extends BaseActivity {
         tvTempRange.setText("High " + (int) weather.main.tempMax + "° • Low " + (int) weather.main.tempMin + "°");
         
         tvHumidity.setText(weather.main.humidity + "%");
-        tvClouds.setText(weather.clouds.all + "%");
+        // tvClouds.setText(weather.clouds.all + "%"); // Removed
         tvWind.setText(weather.wind.speed + " KPH"); 
 
-        String iconUrl = "https://openweathermap.org/img/wn/" + weather.weather.get(0).icon + "@2x.png";
-        Glide.with(this).load(iconUrl).into(ivCurrentIcon);
+        // String iconUrl = "https://openweathermap.org/img/wn/" + weather.weather.get(0).icon + "@2x.png";
+        // Glide.with(this).load(iconUrl).into(ivCurrentIcon); // Removed
     }
 
     private void updateForecast(ForecastResponse forecast) {

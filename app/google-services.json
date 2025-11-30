@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "26616996170",
+    "project_id": "weather-forecast-system-bbde9",
+    "storage_bucket": "weather-forecast-system-bbde9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:26616996170:android:ac57b2af5663c14e5b21b3",
+        "android_client_info": {
+          "package_name": "com.example.smartweatheralertearlywarningsystem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAL2JtmWQfznJnzMOTHuvfbbKcO4k6k5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
